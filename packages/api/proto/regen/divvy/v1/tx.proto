@@ -1,0 +1,203 @@
+syntax = "proto3";
+
+package regen.divvy.v1;
+
+import "cosmos/base/v1beta1/coin.proto";
+import "gogoproto/gogo.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+import "regen/divvy/v1/types.proto";
+
+option go_package = "github.com/regen-network/regen-ledger/x/divvy";
+option (gogoproto.goproto_getters_all) = false;
+
+// Msg is the divvy Msg service.
+service Msg {
+
+  // Allocator is a distribution engine, which "divvys out" all incoming funds,
+  // at configurable time intervals to all registered recipients.
+  // Each allocator has only one owner.
+  // Ideally this can be managed by a group module.
+  rpc CreateAllocator(MsgCreateAllocator) returns (MsgCreateAllocatorResp);
+
+  // Updates all allocator settings except admin and recipient map.
+  rpc UpdateAllocatorSettings(MsgUpdateAllocatorSettings)
+      returns (MsgEmptyResp);
+
+  // Allocator owner can update the recipient list by setting a new
+  // allocation map.
+  rpc SetAllocatorRecipients(MsgSetAllocatorRecipients) returns (MsgEmptyResp);
+
+  // Removes allocator and disables all streamers!
+  rpc RemoveAllocator(MsgRemoveAllocator) returns (MsgEmptyResp);
+
+  rpc ClaimAllocations(MsgClaimAllocations) returns (MsgClaimAllocationsResp);
+
+  /** STREAMS **/
+
+  // Creates a new stream to feed an address
+  // User creates a stream. Parameters:
+  // * % of total amount to be streamed to allocator every second.
+  // * destination address where the stream will go (ideally allocator)
+  rpc CreateSlowReleaseStream(MsgCreateSlowReleaseStream)
+      returns (MsgCreateSlowReleaseStreamResp);
+
+  rpc PauseSlowReleaseStream(MsgPauseSlowReleaseStream) returns (MsgEmptyResp);
+
+  rpc EditSlowReleaseStream(MsgEditSlowReleaseStream) returns (MsgEmptyResp);
+
+  // rpc CreateLPRewardsStream(MsgAddStream) returns (MsgEmptyResp);
+
+  // In another module:
+  // IBC Stream: sends tokens to a destination address (allocator) on other
+  // chain.
+}
+
+message MsgEmptyResp {}
+
+// MsgCreateClass is the Msg/CreateClass request type.
+message MsgCreateAllocator {
+  // admin is the address of the account that creates the allocator and signs
+  // the message
+  string admin = 2;
+
+  google.protobuf.Timestamp start = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  google.protobuf.Timestamp end = 4
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution
+  google.protobuf.Duration interval = 5
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+
+  // name of the allocator
+  string name = 6;
+  // url with metadata
+  string url = 7;
+
+  // Initial allocator mapping.
+  // Invariants:
+  // * sum of shares in recipients must equal to 100% (1mln)
+  repeated Recipient recipients = 10 [ (gogoproto.nullable) = false ];
+}
+
+// MsgCreateClassResponse is the Msg/CreateAllocator response type.
+message MsgCreateAllocatorResp {
+  // Address is a unique address of newly created Allocator
+  string address = 1;
+}
+
+message MsgUpdateAllocatorSettings {
+  // address of the allocator
+  string address = 1;
+
+  // sender must the the Allocator admin
+  string sender = 2;
+
+  google.protobuf.Timestamp start = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  google.protobuf.Timestamp end = 4
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution
+  google.protobuf.Duration interval = 5
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+
+  // name of the allocator
+  string name = 6;
+  // url with metadata
+  string url = 7;
+}
+
+message MsgSetAllocatorRecipients {
+  // address of the allocator
+  string address = 1;
+
+  // sender must the the Allocator admin
+  string sender = 2;
+  // New allocator mapping.
+  // Invariants:
+  // * sum of shares in recipients must equal to 100% (1mln)
+  repeated Recipient recipients = 3 [ (gogoproto.nullable) = false ];
+}
+
+message MsgRemoveAllocator {
+  // address of the allocator
+  string address = 1;
+  // sender must the the Allocator admin
+  string sender = 2;
+}
+
+message MsgClaimAllocations {
+  // signer, anyone can claim rewards
+  string sender = 1;
+  // allocator address
+  string allocator = 2;
+}
+
+message MsgClaimAllocationsResp {
+  // distributed allocations
+  repeated cosmos.base.v1beta1.Coin coins = 1 [ (gogoproto.nullable) = false ];
+}
+
+/*************
+    STREAMS
+**************/
+
+message MsgCreateSlowReleaseStream {
+  // signer and creator of the stream
+  string admin = 2;
+
+  // when the stream starts
+  google.protobuf.Timestamp start = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution
+  google.protobuf.Duration interval = 4
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+
+  string name = 5;
+  // Allocator address
+  string destination = 6;
+  // when paused, stream won't send funds
+  bool paused = 7;
+
+  StreamStrategy strategy = 10 [ (gogoproto.nullable) = false ];
+}
+
+// MsgCreateSlowReleaseStreamResp is response for
+// Msg/CreateSlowReleaseStreamResp
+message MsgCreateSlowReleaseStreamResp {
+  // address of the newly created streamer
+  string address = 1;
+}
+
+message MsgPauseSlowReleaseStream {
+  // address of a stream
+  string address = 1;
+
+  // sender must the the Stream admin
+  string sender = 2;
+  // the pause value to set
+  bool paused = 3;
+}
+
+message MsgEditSlowReleaseStream {
+  // address of a stream
+  string address = 1;
+
+  // sender must the the Stream admin
+  string sender = 2;
+  // when the stream starts
+  google.protobuf.Timestamp start = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution
+  google.protobuf.Duration interval = 4
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+
+  string name = 5;
+  // Allocator address
+  string destination = 6;
+  // when paused, stream won't send funds
+  bool paused = 7;
+
+  StreamStrategy strategy = 10;
+}

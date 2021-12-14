@@ -15,6 +15,8 @@
 		"format": "yarn lint --fix",
 		"lerna:deploy": "yarn build && lerna version --conventional-commits && lerna publish from-git",
 		"lint": "tsc --noEmit && eslint --ext js,ts,tsx .",
+		"protoGen": "cd ./packages/api/ && ./scripts/protocgen.sh",
+		"protoSync": "./packages/api/scripts/syncProto.sh",
 		"start": "yarn workspace @regen-network/demo-app start",
 		"test": "lerna run test"
 	},

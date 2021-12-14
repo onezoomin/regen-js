@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package regen.divvy.v1;
+
+import "cosmos/base/v1beta1/coin.proto";
+import "gogoproto/gogo.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/regen-network/regen-ledger/x/divvy";
+option (gogoproto.goproto_getters_all) = false;
+
+message Recipient {
+  // address wallet address
+  string address = 1;
+  // allocation share. 100% = 1e6.
+  uint32 share = 2;
+  string name = 3;
+}
+
+message StoreAllocator {
+  // admin is the address of the account that creates the allocator and signs
+  // the message
+  string admin = 1;
+
+  google.protobuf.Timestamp start = 2
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  google.protobuf.Timestamp end = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution, min = 1s
+  google.protobuf.Duration interval = 4
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+
+  // name of the allocator
+  string name = 5;
+  // url with metadata
+  string url = 6;
+  bool paused = 7;
+
+  // Invariant:
+  // * sum of shares in entires must equal to 100% (1mln)
+  // list of allocation entries
+  repeated StoreRecipient recipients = 10 [ (gogoproto.nullable) = false ];
+  // timestamp when anyone can call for the next time.
+  google.protobuf.Timestamp next_claim = 11
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+}
+
+message StoreRecipient {
+  // address wallet address
+  bytes address = 1;
+  // allocation share. 100% = 1e6.
+  uint32 share = 2;
+  string name = 3;
+}
+
+message Allocator {
+  // admin is the address of the account that creates the allocator and signs
+  // the message
+  string admin = 1;
+
+  google.protobuf.Timestamp start = 2
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  google.protobuf.Timestamp end = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution, min = 1s
+  google.protobuf.Duration interval = 4
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+
+  // name of the allocator
+  string name = 5;
+  // url with metadata
+  string url = 6;
+  bool paused = 7;
+
+  // submodule address of the given allocator
+  string address = 9;
+
+  // Invariant:
+  // * sum of shares in entires must equal to 100% (1mln)
+  // list of allocation entries
+  repeated Recipient recipients = 10 [ (gogoproto.nullable) = false ];
+  // timestamp when anyone can call for the next time.
+  google.protobuf.Timestamp next_claim = 11
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+}
+
+message StoreSlowReleaseStream {
+  // signer and creator of the stream
+  bytes admin = 1;
+
+  // when the stream starts
+  google.protobuf.Timestamp start = 2
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution
+  google.protobuf.Duration interval = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+  // Allocator address
+  bytes destination = 4;
+
+  // name of the allocator
+  string name = 5;
+  bool paused = 6;
+
+  StreamStrategy strategy = 7 [ (gogoproto.nullable) = false ];
+}
+
+message SlowReleaseStream {
+  // signer and creator of the stream
+  string admin = 1;
+
+  // when the stream starts
+  google.protobuf.Timestamp start = 2
+      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // how often we do a distribution
+  google.protobuf.Duration interval = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+  // Allocator address
+  string destination = 4;
+
+  // name of the allocator
+  string name = 5;
+  bool paused = 6;
+  StreamStrategy strategy = 7 [ (gogoproto.nullable) = false ];
+
+  // submodule address of the given stream
+  string address = 10;
+}
+
+message StreamStrategy {
+  oneof strategy {
+    // fixed amount of tokens streamed in each round. If there is a zero balance
+    // available then then nothing will be streamed. If only fraction is
+    // available then the it will be fully streamed.
+    string fixed_amount = 1;
+  }
+}
